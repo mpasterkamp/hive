@@ -38,6 +38,7 @@ import java.util.Set;
 
 import org.antlr.runtime.TokenRewriteStream;
 import org.antlr.runtime.tree.Tree;
+import org.apache.calcite.rel.RelNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
@@ -128,6 +129,7 @@ public abstract class BaseSemanticAnalyzer {
   protected Context ctx;
   protected HashMap<String, String> idToTableNameMap;
   protected QueryProperties queryProperties;
+  private RelNode calcitePlan;
 
   /**
    * A set of FileSinkOperators being written to in an ACID compliant way.  We need to remember
@@ -260,6 +262,14 @@ public abstract class BaseSemanticAnalyzer {
     } catch (Exception e) {
       throw new SemanticException(e);
     }
+  }
+
+  public RelNode getCalcitePlan() {
+    return calcitePlan;
+  }
+
+  public void setCalcitePlan(RelNode calcitePlan) {
+    this.calcitePlan = calcitePlan;
   }
 
   protected static Hive createHiveDB(HiveConf conf) throws SemanticException {

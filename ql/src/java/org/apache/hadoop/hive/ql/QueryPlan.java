@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.calcite.rel.RelNode;
 import org.apache.curator.shaded.com.google.common.collect.Lists;
 import org.apache.hadoop.hive.metastore.api.Schema;
 import org.apache.hadoop.hive.ql.exec.ConditionalTask;
@@ -117,6 +118,7 @@ public class QueryPlan implements Serializable {
   private final WriteEntity acidAnalyzeTable;
   private final DDLDesc.DDLDescWithWriteId acidDdlDesc;
   private Boolean autoCommitValue;
+  private RelNode calcitePlan;
 
   public QueryPlan() {
     this(null);
@@ -161,6 +163,14 @@ public class QueryPlan implements Serializable {
     this.acidDdlDesc = sem.getAcidDdlDesc();
     this.acidAnalyzeTable = sem.getAcidAnalyzeTable();
     this.cboInfo = sem.getCboInfo();
+  }
+
+  public RelNode getCalcitePlan() {
+    return calcitePlan;
+  }
+
+  public void setCalcitePlan(RelNode calcitePlan) {
+    this.calcitePlan = calcitePlan;
   }
 
   /**

@@ -672,7 +672,7 @@ public class Driver implements IDriver {
 
       if (executeHooks) {
         hookCtx.update(sem);
-        hookRunner.runPostAnalyzeHooks(hookCtx, sem.getAllRootTasks());
+        hookRunner.runPostAnalyzeHooks(hookCtx, (List<Task<? extends java.io.Serializable>>) sem.getAllRootTasks());
       }
 
       LOG.info("Semantic Analysis Completed (retrial = {})", retrial);
@@ -694,6 +694,7 @@ public class Driver implements IDriver {
           queryState.getHiveOperation(), schema);
       // save the optimized sql for the explain
       plan.setOptimizedQueryString(ctx.getOptimizedSql());
+      plan.setCalcitePlan(sem.getCalcitePlan());
 
       conf.set("mapreduce.workflow.id", "hive_" + queryId);
       conf.set("mapreduce.workflow.name", queryStr);

@@ -1450,6 +1450,7 @@ public class CalcitePlanner extends SemanticAnalyzer {
       rethrowCalciteException(e);
       throw new AssertionError("rethrowCalciteException didn't throw for " + e.getMessage());
     }
+    this.setCalcitePlan(optimizedOptiqPlan);
     return optimizedOptiqPlan;
   }
 

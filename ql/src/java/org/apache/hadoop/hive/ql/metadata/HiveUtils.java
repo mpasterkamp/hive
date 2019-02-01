@@ -20,8 +20,16 @@ package org.apache.hadoop.hive.ql.metadata;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.AggregateCall;
+import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rex.RexInputRef;
+import org.apache.calcite.rex.RexLiteral;
+import org.apache.calcite.rex.RexNode;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -39,6 +47,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHive
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * General collection of helper functions.
@@ -446,5 +455,180 @@ public final class HiveUtils {
       return new Path(root, dbName + "." + tableName);
     }
     return new Path(root, dbName);
+  }
+
+  public static String toStringRepresentation(RelNode node) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(node.getRelTypeName());
+    sb.append("(");
+    String name = node.getClass().getSimpleName();
+    RelExpression exp = RelExpression.valueOf(node.getClass().getSimpleName());
+    String conditionString = "";
+    switch(exp) {
+      case HiveTableScan:
+        HiveTableScan tableScan = (HiveTableScan) node;
+        sb.append(toStringRepresentation(tableScan.getInputs()));
+        sb.append(tableScan.getTableAlias());
+        break;
+      case HiveFilter:
+        HiveFilter filter = (HiveFilter) node;
+        sb.append(toStringRepresentation(filter.getInput()));
+        sb.append(", ");
+        conditionString = rexToString(filter.getCondition(), filter);
+        sb.append(conditionString);
+        break;
+      case HiveJoin:
+        HiveJoin join = (HiveJoin) node;
+        RelNode left = join.getLeft();
+        RelNode right = join.getRight();
+        String leftString = toStringRepresentation(left);
+        String rightString = toStringRepresentation(right);
+        conditionString = rexToString(join.getCondition(), join);
+        boolean reorder = leftString.compareTo(rightString) > 0;
+        if (reorder) {
+          String tempString = leftString;
+          leftString = rightString;
+          rightString = tempString;
+        }
+        sb.append(leftString);
+        sb.append(", ");
+        sb.append(rightString);
+        sb.append(", ");
+        sb.append(conditionString);
+        break;
+      case HiveProject:
+        HiveProject project = (HiveProject) node;
+        String columns = String.join(", ", project.getRowType().getFieldNames());
+        sb.append(toStringRepresentation(project.getInputs()));
+        sb.append(", ");
+        sb.append(String.join(", ", columns));
+        break;
+      case HiveAggregate:
+        HiveAggregate aggregate = (HiveAggregate) node;
+        sb.append(toStringRepresentation(aggregate.getInputs()));
+        sb.append(", (");
+        for (AggregateCall call : aggregate.getAggCallList()) {
+          sb.append(aggCallToString(call, aggregate));
+          sb.append(", ");
+        }
+        sb.delete(sb.length() - 2, sb.length());
+        sb.append("), (");
+        // Parse the tostring of the groupset
+        String groupset = aggregate.getGroupSet().toString();
+        groupset = groupset.substring(1, groupset.length() - 1);
+        String[] columnIndexStrings = groupset.split(", ");
+        List<String> fieldNames = aggregate.getInput().getRowType().getFieldNames();
+        for (String s : columnIndexStrings) {
+          sb.append(fieldNames.get(Integer.parseInt(s)));
+          sb.append(", ");
+        }
+        sb.delete(sb.length() - 2, sb.length());
+        sb.append(")");
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+  private static String toStringRepresentation(List<RelNode> nodes) {
+    if (nodes.isEmpty()) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (RelNode node : nodes) {
+      sb.append(toStringRepresentation(node));
+      sb.append(", ");
+    }
+    return sb.substring(0, sb.length() - 2);
+  }
+
+
+  public static String aggCallToString(AggregateCall call, RelNode parentNode) {
+    StringBuilder buf = new StringBuilder(call.getAggregation().getName());
+    buf.append("(");
+    if (call.isDistinct()) {
+      buf.append((call.getArgList().size() == 0) ? "DISTINCT" : "DISTINCT ");
+    }
+    int i = -1;
+    List<String> fieldNames = parentNode.getRowType().getFieldNames();
+    for (Integer arg : call.getArgList()) {
+      if (++i > 0) {
+        buf.append(", ");
+      }
+      buf.append(fieldNames.get(arg));
+    }
+    buf.append(")");
+    if (call.hasFilter()) {
+      buf.append(" FILTER $");
+      buf.append(call.filterArg);
+    }
+    return buf.toString();
+  }
+
+  enum RelExpression {
+    HiveTableScan,
+    HiveFilter,
+    HiveJoin,
+    HiveProject,
+    HiveAggregate
+  }
+
+  public static String rexToString(RexNode rexNode, RelNode relNode) {
+    StringBuilder builder = new StringBuilder();
+    String className = rexNode.getClass().getSimpleName();
+    RexExpression expression = RexExpression.valueOf(className);
+    switch (expression) {
+      case RexCall:
+        RexCall call = (RexCall) rexNode;
+        String condition = call.op.toString();
+        String operands = call.operands.stream().map(x -> rexToString(x, relNode)).collect(Collectors.joining(", "));
+        builder.append(condition);
+        builder.append("(");
+        builder.append(operands);
+        builder.append(")");
+        break;
+      case RexFieldAccess:
+        throw new NotImplementedException();
+//        break;
+      case RexLiteral:
+        RexLiteral lit = (RexLiteral) rexNode;
+        builder.append(lit.toString());
+        break;
+      case RexVariable:
+        throw new NotImplementedException();
+//        break;
+      case RexRangeRef:
+        throw new NotImplementedException();
+//        break;
+      case RexInputRef:
+        RexInputRef ref = (RexInputRef) rexNode;
+        String column = getReferenceColumn(ref, relNode);
+        builder.append(column);
+        break;
+      default:
+        throw new NotImplementedException();
+
+    }
+    return builder.toString();
+  }
+
+  enum RexExpression {
+    RexCall,
+    RexFieldAccess,
+    RexLiteral,
+    RexVariable,
+    RexRangeRef,
+    RexInputRef
+  }
+
+  private static String getReferenceColumn(RexInputRef ref, RelNode node) {
+    int index = getReferenceIndex(ref);
+    String column = node.getRowType().getFieldList().get(index).getName();
+    return column;
+  }
+
+  private static int getReferenceIndex(RexInputRef ref) {
+    String originalIndexString = ref.toString().substring(1);
+    int index = Integer.parseInt(originalIndexString);
+    return index;
   }
 }
