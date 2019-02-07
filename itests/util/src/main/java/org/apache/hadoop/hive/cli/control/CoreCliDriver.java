@@ -21,11 +21,14 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.hive.ql.QTestArguments;
-import org.apache.hadoop.hive.ql.QTestProcessExecResult;
-import org.apache.hadoop.hive.ql.QTestUtil;
+import org.apache.calcite.rel.RelNode;
+import org.apache.hadoop.hive.CalciteHook;
+import org.apache.hadoop.hive.CalcitePlanRepository;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.*;
 import org.apache.hadoop.hive.ql.QTestUtil.MiniClusterType;
 import org.apache.hadoop.hive.util.ElapsedTimeLoggingWrapper;
 import org.junit.After;
@@ -121,6 +124,7 @@ public class CoreCliDriver extends CliAdapter {
       System.err.flush();
       fail("Unexpected exception in setup");
     }
+    CalcitePlanRepository.repository.clear();
   }
 
   @Override
@@ -180,8 +184,13 @@ public class CoreCliDriver extends CliAdapter {
 
       qt.addFile(fpath);
       qt.cliInit(new File(fpath));
-
-      int ecode = qt.executeClient(fname);
+      Pair<Integer, List<RelNode>> pair = qt.executeClient(fname);
+      System.out.println(CalcitePlanRepository.repository);
+      int ecode = pair.x;
+      List<RelNode> plans = pair.y;
+      if (plans.size() > 0) {
+        System.out.println();
+      }
       if (ecode != 0) {
         failed = true;
         qt.failed(ecode, fname, debugHint);

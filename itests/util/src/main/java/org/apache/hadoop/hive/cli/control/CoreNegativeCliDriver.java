@@ -125,7 +125,7 @@ public class CoreNegativeCliDriver extends CliAdapter{
       qt.addFile(fpath);
       qt.cliInit(new File(fpath));
 
-      int ecode = qt.executeClient(fname);
+      int ecode = qt.executeClient(fname).x;
       if (ecode == 0) {
         qt.failed(fname, debugHint);
       }

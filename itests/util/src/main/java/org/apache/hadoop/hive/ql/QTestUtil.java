@@ -62,6 +62,7 @@ import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.calcite.rel.RelNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
@@ -71,6 +72,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.hadoop.hive.CalciteHook;
 import org.apache.hadoop.hive.cli.CliDriver;
 import org.apache.hadoop.hive.cli.CliSessionState;
 import org.apache.hadoop.hive.cli.control.AbstractCliConfig;
@@ -267,6 +269,10 @@ public class QTestUtil {
     return srcUDFs;
   }
 
+  public IDriver getDrv() {
+    return drv;
+  }
+
   public HiveConf getConf() {
     return conf;
   }
@@ -277,7 +283,7 @@ public class QTestUtil {
     if (vectorizationEnabled != null && vectorizationEnabled.equalsIgnoreCase("true")) {
       conf.setBoolVar(ConfVars.HIVE_VECTORIZATION_ENABLED, true);
     }
-
+    conf.setVar(HiveConf.ConfVars.PREEXECHOOKS, CalciteHook.class.getName());
     // Plug verifying metastore in for testing DirectSQL.
     conf.setVar(ConfVars.METASTORE_RAW_STORE_IMPL, "org.apache.hadoop.hive.metastore.VerifyingObjectStore");
 
@@ -1244,17 +1250,18 @@ public class QTestUtil {
     return drv.run(qMap.get(tname)).getResponseCode();
   }
 
-  public int executeClient(String tname1, String tname2) {
+  public Pair<Integer, List<RelNode>> executeClient(String tname1, String tname2) {
     String commands = getCommand(tname1) + CRLF + getCommand(tname2);
     return executeClientInternal(commands);
   }
 
-  public int executeClient(String fileName) {
+  public Pair<Integer, List<RelNode>> executeClient(String fileName) {
     return executeClientInternal(getCommand(fileName));
   }
 
-  private int executeClientInternal(String commands) {
+  private Pair<Integer, List<RelNode>> executeClientInternal(String commands) {
     List<String> cmds = CliDriver.splitSemiColon(commands);
+    ArrayList<RelNode> plans = new ArrayList<>();
     int rc = 0;
 
     String command = "";
@@ -1282,13 +1289,20 @@ public class QTestUtil {
       if (rc != 0 && !ignoreErrors()) {
         break;
       }
+      QueryPlan qplan;
+      RelNode plan;
+      if ((qplan = drv.getPlan()) != null && (plan = qplan.getCalcitePlan()) != null) {
+        plans.add(plan);
+      }
       command = "";
     }
     if (rc == 0 && SessionState.get() != null) {
       SessionState.get().setLastCommand(null);  // reset
     }
-    return rc;
+    return new Pair<>(rc, plans);
   }
+
+
 
   /**
    * This allows a .q file to continue executing after a statement runs into an error which is convenient
