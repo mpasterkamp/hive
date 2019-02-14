@@ -189,17 +189,6 @@ public class CoreCliDriver extends CliAdapter {
       qt.addFile(fpath);
       qt.cliInit(new File(fpath));
       int ecode = qt.executeClient(fname);
-      List<RelNode> repository = CalcitePlanRepository.repository;
-      List<RelNode> spjas = CalcitePlanRepository.filterSPJA(CalcitePlanRepository.repository);
-      for (int i = 0; i < spjas.size(); i++) {
-        RelNode spja = spjas.get(i);
-        String s3 = CalcitePlanRepository.getOptimizedSql(spja, qt.getConf());
-        RelNode gen = CalcitePlanRepository.generalize(spja.copy(spja.getTraitSet(), spja.getInputs()));
-        String s = RelOptUtil.toString(spja);
-        String s2 = HiveUtils.toStringRepresentation(spja);
-        System.out.println(CalcitePlanRepository.getOptimizedSql(gen, qt.getConf()));
-        System.out.println();
-      }
       if (ecode != 0) {
         failed = true;
         qt.failed(ecode, fname, debugHint);

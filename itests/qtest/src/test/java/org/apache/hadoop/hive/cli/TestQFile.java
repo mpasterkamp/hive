@@ -36,8 +36,8 @@ public class TestQFile {
     @Rule
     public TestRule cliTestRule = adapter.buildTestRule();
 
-    private String name = "subquery_scalar.q";
-    private String path = "/home/mark/github/hive/ql/src/test/queries/clientpositive/";
+    private String name = "tablescan.q";
+    private String path = "/home/mark/github/hive/ql/src/test/queries/clientpositive/thesis/";
     private File qfile = new File(path + name);
 
     @Test
