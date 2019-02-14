@@ -21,15 +21,19 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.hadoop.hive.CalciteHook;
 import org.apache.hadoop.hive.CalcitePlanRepository;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.*;
 import org.apache.hadoop.hive.ql.QTestUtil.MiniClusterType;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.util.ElapsedTimeLoggingWrapper;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -184,11 +188,16 @@ public class CoreCliDriver extends CliAdapter {
 
       qt.addFile(fpath);
       qt.cliInit(new File(fpath));
-      Pair<Integer, List<RelNode>> pair = qt.executeClient(fname);
-      System.out.println(CalcitePlanRepository.repository);
-      int ecode = pair.x;
-      List<RelNode> plans = pair.y;
-      if (plans.size() > 0) {
+      int ecode = qt.executeClient(fname);
+      List<RelNode> repository = CalcitePlanRepository.repository;
+      List<RelNode> spjas = CalcitePlanRepository.filterSPJA(CalcitePlanRepository.repository);
+      for (int i = 0; i < spjas.size(); i++) {
+        RelNode spja = spjas.get(i);
+        String s3 = CalcitePlanRepository.getOptimizedSql(spja, qt.getConf());
+        RelNode gen = CalcitePlanRepository.generalize(spja.copy(spja.getTraitSet(), spja.getInputs()));
+        String s = RelOptUtil.toString(spja);
+        String s2 = HiveUtils.toStringRepresentation(spja);
+        System.out.println(CalcitePlanRepository.getOptimizedSql(gen, qt.getConf()));
         System.out.println();
       }
       if (ecode != 0) {

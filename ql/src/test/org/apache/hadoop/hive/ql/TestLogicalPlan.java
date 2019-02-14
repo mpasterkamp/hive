@@ -75,7 +75,7 @@ public class TestLogicalPlan {
         driver.run(inserter.genRowT2(80));
         // Create some queries
         String query1 = "select * from t1";
-        String query2 = "select * from t1 join t2 on (t1.id1 = t2.id1)";
+        String query2 = "select t2.id1 from t1 join t2 on (t1.id1 = t2.id1)";
         String query3 = "select * from v1 join t2 on (v1.id1 = t2.id1)";
         String query4 = "select * from v2 join t2 on (v2.id1 = t2.id1)";
         String query5 = "select t3.name1 from (select t1.name1 from t1 join t2 on (t1.id1 = t2.id1)) t3";

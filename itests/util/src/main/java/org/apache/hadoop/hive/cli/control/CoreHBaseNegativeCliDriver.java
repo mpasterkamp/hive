@@ -104,7 +104,7 @@ public class CoreHBaseNegativeCliDriver extends CliAdapter {
       System.err.println("Begin query: " + fname);
       qt.addFile(fpath);
       qt.cliInit(new File(fpath));
-      int ecode = qt.executeClient(fname).x;
+      int ecode = qt.executeClient(fname);
       if (ecode == 0) {
         qt.failed(fname, null);
       }

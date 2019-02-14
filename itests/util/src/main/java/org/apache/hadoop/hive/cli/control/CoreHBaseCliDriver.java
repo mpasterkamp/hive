@@ -111,7 +111,7 @@ public class CoreHBaseCliDriver extends CliAdapter {
 
       qt.cliInit(new File(fpath));
 
-      int ecode = qt.executeClient(fname).x;
+      int ecode = qt.executeClient(fname);
       if (ecode != 0) {
         qt.failed(ecode, fname, null);
       }

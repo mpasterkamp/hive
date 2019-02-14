@@ -1250,18 +1250,17 @@ public class QTestUtil {
     return drv.run(qMap.get(tname)).getResponseCode();
   }
 
-  public Pair<Integer, List<RelNode>> executeClient(String tname1, String tname2) {
+  public int executeClient(String tname1, String tname2) {
     String commands = getCommand(tname1) + CRLF + getCommand(tname2);
     return executeClientInternal(commands);
   }
 
-  public Pair<Integer, List<RelNode>> executeClient(String fileName) {
+  public int executeClient(String fileName) {
     return executeClientInternal(getCommand(fileName));
   }
 
-  private Pair<Integer, List<RelNode>> executeClientInternal(String commands) {
+  private int executeClientInternal(String commands) {
     List<String> cmds = CliDriver.splitSemiColon(commands);
-    ArrayList<RelNode> plans = new ArrayList<>();
     int rc = 0;
 
     String command = "";
@@ -1289,17 +1288,12 @@ public class QTestUtil {
       if (rc != 0 && !ignoreErrors()) {
         break;
       }
-      QueryPlan qplan;
-      RelNode plan;
-      if ((qplan = drv.getPlan()) != null && (plan = qplan.getCalcitePlan()) != null) {
-        plans.add(plan);
-      }
       command = "";
     }
     if (rc == 0 && SessionState.get() != null) {
       SessionState.get().setLastCommand(null);  // reset
     }
-    return new Pair<>(rc, plans);
+    return rc;
   }
 
 

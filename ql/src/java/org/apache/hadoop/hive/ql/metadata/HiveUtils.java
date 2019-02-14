@@ -505,24 +505,27 @@ public final class HiveUtils {
         break;
       case HiveAggregate:
         HiveAggregate aggregate = (HiveAggregate) node;
+        List<String> fieldNames = aggregate.getInput().getRowType().getFieldNames();
         sb.append(toStringRepresentation(aggregate.getInputs()));
         sb.append(", (");
         for (AggregateCall call : aggregate.getAggCallList()) {
-          sb.append(aggCallToString(call, aggregate));
+          sb.append(aggCallToString(call, fieldNames));
           sb.append(", ");
         }
         sb.delete(sb.length() - 2, sb.length());
         sb.append("), (");
         // Parse the tostring of the groupset
         String groupset = aggregate.getGroupSet().toString();
-        groupset = groupset.substring(1, groupset.length() - 1);
-        String[] columnIndexStrings = groupset.split(", ");
-        List<String> fieldNames = aggregate.getInput().getRowType().getFieldNames();
-        for (String s : columnIndexStrings) {
-          sb.append(fieldNames.get(Integer.parseInt(s)));
-          sb.append(", ");
+        // In case of empty groupset
+        if (!groupset.equals("{}")) {
+          groupset = groupset.substring(1, groupset.length() - 1);
+          String[] columnIndexStrings = groupset.split(", ");
+          for (String s : columnIndexStrings) {
+            sb.append(fieldNames.get(Integer.parseInt(s)));
+            sb.append(", ");
+          }
+          sb.delete(sb.length() - 2, sb.length());
         }
-        sb.delete(sb.length() - 2, sb.length());
         sb.append(")");
     }
     sb.append(")");
@@ -542,14 +545,13 @@ public final class HiveUtils {
   }
 
 
-  public static String aggCallToString(AggregateCall call, RelNode parentNode) {
+  public static String aggCallToString(AggregateCall call, List<String> fieldNames) {
     StringBuilder buf = new StringBuilder(call.getAggregation().getName());
     buf.append("(");
     if (call.isDistinct()) {
       buf.append((call.getArgList().size() == 0) ? "DISTINCT" : "DISTINCT ");
     }
     int i = -1;
-    List<String> fieldNames = parentNode.getRowType().getFieldNames();
     for (Integer arg : call.getArgList()) {
       if (++i > 0) {
         buf.append(", ");
